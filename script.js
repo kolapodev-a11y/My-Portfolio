@@ -1,262 +1,316 @@
-// main.js
+const CONFIG = {
+  whatsappNumber: '2348012345678',
+  flutterwaveLink: '',
+  currency: 'NGN'
+};
 
-document.addEventListener('DOMContentLoaded', () => {
-    initMobileNavigation();
-    initSmoothScrolling();
-    initNavbarScrollEffect();
-    initFadeInAnimations();
-    createScrollToTopButton();
-    initContactForm();
-    initTypingEffect();
+const products = [
+  { id: 1, name: 'Noir Velvet Extrait', category: 'perfume', price: 28500, badge: 'Best Seller', description: 'A rich evening fragrance with warm amber, spice and smooth woody depth.', visual: 'bottle' },
+  { id: 2, name: 'Golden Aura Mist', category: 'body spray', price: 9500, badge: 'Fresh Pick', description: 'An easy daily body spray with airy citrus brightness and soft musk.', visual: 'bottle' },
+  { id: 3, name: 'Silk Oud Roll On', category: 'roll ons', price: 6500, badge: 'Pocket Size', description: 'A compact roll on blend for quick scent touch-ups through the day.', visual: 'bottle' },
+  { id: 4, name: 'Velvet Reed Diffuser', category: 'diffusers', price: 18000, badge: 'Home Luxe', description: 'A premium reed diffuser designed to scent your room with soft sophistication.', visual: 'diffuser' },
+  { id: 5, name: 'Mist Halo Humidifier', category: 'humidifiers', price: 24000, badge: 'Modern Tech', description: 'A compact humidifier for ambience, moisture balance and fragrance diffusion.', visual: 'humidifier' },
+  { id: 6, name: 'Rose Ember Perfume', category: 'perfume', price: 22000, badge: 'New', description: 'A floral-spice blend with rose, saffron warmth and an addictive dry down.', visual: 'bottle' }
+];
+
+const state = {
+  filter: 'all',
+  query: '',
+  cart: JSON.parse(localStorage.getItem('hovaluxe_cart') || '[]')
+};
+
+const currency = new Intl.NumberFormat('en-NG', {
+  style: 'currency',
+  currency: CONFIG.currency,
+  maximumFractionDigits: 0
 });
 
-/* -----------------------
-   MOBILE NAVIGATION
------------------------ */
-function initMobileNavigation() {
-    const hamburger = document.getElementById('hamburger');
-    const navMenu = document.getElementById('nav-menu');
+const productsGrid = document.getElementById('productsGrid');
+const filterButtons = Array.from(document.querySelectorAll('.filter-btn'));
+const searchInput = document.getElementById('searchInput');
+const cartButton = document.getElementById('cartButton');
+const cartDrawer = document.getElementById('cartDrawer');
+const cartOverlay = document.getElementById('cartOverlay');
+const closeCartBtn = document.getElementById('closeCartBtn');
+const cartItems = document.getElementById('cartItems');
+const cartSubtotal = document.getElementById('cartSubtotal');
+const cartTotal = document.getElementById('cartTotal');
+const cartCount = document.getElementById('cartCount');
+const goToCheckoutBtn = document.getElementById('goToCheckoutBtn');
+const checkoutItemsCount = document.getElementById('checkoutItemsCount');
+const checkoutTotal = document.getElementById('checkoutTotal');
+const checkoutForm = document.getElementById('checkoutForm');
+const customerName = document.getElementById('customerName');
+const customerPhone = document.getElementById('customerPhone');
+const customerNote = document.getElementById('customerNote');
+const whatsappCheckoutBtn = document.getElementById('whatsappCheckoutBtn');
+const flutterwaveBtn = document.getElementById('flutterwaveBtn');
+const toast = document.getElementById('toast');
 
-    if (hamburger && navMenu) {
-        hamburger.addEventListener('click', () => {
-            hamburger.classList.toggle('active');
-            navMenu.classList.toggle('active');
-        });
-
-        // Close mobile menu when clicking a link
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', () => {
-                hamburger.classList.remove('active');
-                navMenu.classList.remove('active');
-            });
-        });
-    }
+function formatPrice(amount) {
+  return currency.format(amount || 0);
 }
 
-/* -----------------------
-   SMOOTH SCROLLING
------------------------ */
-function initSmoothScrolling() {
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                const navbar = document.querySelector('.navbar');
-                const navHeight = navbar ? navbar.offsetHeight : 0;
-                const targetPosition = target.offsetTop - navHeight;
-
-                window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                });
-            }
-        });
-    });
+function saveCart() {
+  localStorage.setItem('hovaluxe_cart', JSON.stringify(state.cart));
 }
 
-/* -----------------------
-   NAVBAR SCROLL EFFECT
------------------------ */
-function initNavbarScrollEffect() {
-    const navbar = document.querySelector('.navbar');
-    if (!navbar) return;
-
-    window.addEventListener('scroll', () => {
-        if (window.scrollY > 50) {
-            navbar.style.background = 'rgba(255, 255, 255, 0.98)';
-            navbar.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
-        } else {
-            navbar.style.background = 'rgba(255, 255, 255, 0.95)';
-            navbar.style.boxShadow = 'none';
-        }
-    });
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
-/* -----------------------
-   FADE-IN ANIMATIONS
------------------------ */
-function initFadeInAnimations() {
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-                observer.unobserve(entry.target);
-            }
-        });
-    }, observerOptions);
-
-    const animateElements = document.querySelectorAll('.project-card, .section-title, .about-content, .contact-content');
-    animateElements.forEach(el => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(30px)';
-        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        observer.observe(el);
-    });
+function getCartCount() {
+  return state.cart.reduce((sum, item) => sum + item.qty, 0);
 }
 
-/* -----------------------
-   SCROLL TO TOP BUTTON
------------------------ */
-function createScrollToTopButton() {
-    const button = document.createElement('button');
-    button.innerHTML = '↑';
-    button.className = 'scroll-to-top';
-    button.style.cssText = `
-        position: fixed; bottom: 20px; right: 20px;
-        width: 50px; height: 50px; border-radius: 50%;
-        background: #2563eb; color: white; border: none;
-        font-size: 1.2rem; cursor: pointer; display: none;
-        z-index: 1000; transition: all 0.3s ease;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    `;
-
-    document.body.appendChild(button);
-
-    window.addEventListener('scroll', () => {
-        button.style.display = window.scrollY > 300 ? 'block' : 'none';
-    });
-
-    button.addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    button.addEventListener('mouseenter', () => {
-        button.style.background = '#1d4ed8';
-        button.style.transform = 'scale(1.1)';
-    });
-
-    button.addEventListener('mouseleave', () => {
-        button.style.background = '#2563eb';
-        button.style.transform = 'scale(1)';
-    });
+function getCartTotal() {
+  return state.cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 }
 
-/* -----------------------
-   CONTACT FORM HANDLING
------------------------ */
-function initContactForm() {
-    const contactForm = document.querySelector('.contact-form');
-    if (!contactForm) return;
+function syncTotals() {
+  const count = getCartCount();
+  const total = getCartTotal();
 
-    contactForm.addEventListener('submit', async function (e) {
-        e.preventDefault();
-
-        const nameField = this.querySelector('input[name="name"]');
-        const emailField = this.querySelector('input[name="email"]');
-        const messageField = this.querySelector('textarea[name="message"]');
-
-        if (!nameField || !emailField || !messageField) {
-            showNotification('Form fields are missing in HTML', 'error');
-            return;
-        }
-
-        const name = nameField.value.trim();
-        const email = emailField.value.trim();
-        const message = messageField.value.trim();
-
-        if (!name || !email || !message) {
-            showNotification('Please fill in all fields', 'error');
-            return;
-        }
-
-        if (!isValidEmail(email)) {
-            showNotification('Please enter a valid email address', 'error');
-            return;
-        }
-
-        // Disable button to prevent multiple submissions
-        const submitBtn = this.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = "Sending...";
-        }
-
-        try {
-            await emailjs.sendForm('service_lwuj9e5', 'template_8fp22u3', this);
-            showNotification('✅ Message sent successfully!', 'success');
-            contactForm.reset();
-        } catch (error) {
-            console.error("EmailJS Error:", error);
-            showNotification('❌ Failed to send message. Try again later.', 'error');
-        } finally {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = "Send Message";
-            }
-        }
-    });
+  cartCount.textContent = count;
+  checkoutItemsCount.textContent = count;
+  cartSubtotal.textContent = formatPrice(total);
+  cartTotal.textContent = formatPrice(total);
+  checkoutTotal.textContent = formatPrice(total);
 }
 
-function isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+function productVisualMarkup(type) {
+  if (type === 'diffuser') {
+    return '<div class="product-art"><div class="art-diffuser"></div></div>';
+  }
+  if (type === 'humidifier') {
+    return '<div class="product-art"><div class="art-humidifier"></div></div>';
+  }
+  return '<div class="product-art"><div class="art-bottle"></div></div>';
 }
 
-function showNotification(message, type = 'info') {
-    // Remove any existing notifications
-    const existingNotification = document.querySelector('.notification');
-    if (existingNotification) existingNotification.remove();
-
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        z-index: 10000;
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
-        max-width: 300px;
-        word-wrap: break-word;
-    `;
-
-    document.body.appendChild(notification);
-
-    // Animate in
-    setTimeout(() => notification.style.transform = 'translateX(0)', 10);
-
-    // Auto remove after 4 seconds
-    setTimeout(() => {
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => notification.remove(), 300);
-    }, 4000);
-}
-/* -----------------------
-   TYPING EFFECT
------------------------ */
-function initTypingEffect() {
-    const heroTitle = document.querySelector('.hero-title');
-    if (!heroTitle) return;
-
-    const originalText = heroTitle.textContent;
-    heroTitle.textContent = '';
-
-    setTimeout(() => {
-        typeWriter(heroTitle, originalText, 80);
-    }, 1000);
+function getFilteredProducts() {
+  return products.filter((product) => {
+    const matchesFilter = state.filter === 'all' || product.category === state.filter;
+    const query = state.query.trim().toLowerCase();
+    const matchesQuery = !query || [product.name, product.category, product.description].join(' ').toLowerCase().includes(query);
+    return matchesFilter && matchesQuery;
+  });
 }
 
-function typeWriter(element, text, speed) {
-    let i = 0;
-    function type() {
-        if (i < text.length) {
-            element.innerHTML += text.charAt(i);
-            i++;
-            setTimeout(type, speed);
-        }
-    }
-    type();
-            }
+function renderProducts() {
+  const filtered = getFilteredProducts();
+
+  if (!filtered.length) {
+    productsGrid.innerHTML = '<div class="empty-state">No products match your search right now.</div>';
+    return;
+  }
+
+  productsGrid.innerHTML = filtered.map((product) => `
+    <article class="product-card luxe-panel">
+      <div class="product-visual">
+        <span class="product-badge">${product.badge}</span>
+        ${productVisualMarkup(product.visual)}
+      </div>
+      <div class="product-info">
+        <div class="product-meta">
+          <span class="product-category">${product.category}</span>
+          <span class="product-price">${formatPrice(product.price)}</span>
+        </div>
+        <h3>${product.name}</h3>
+        <p>${product.description}</p>
+        <div class="product-actions">
+          <button class="btn btn-outline add-to-cart" data-id="${product.id}" type="button">Add to cart</button>
+          <button class="btn btn-whatsapp buy-whatsapp" data-id="${product.id}" type="button">WhatsApp</button>
+        </div>
+      </div>
+    </article>
+  `).join('');
+}
+
+function addToCart(productId) {
+  const product = products.find((item) => item.id === Number(productId));
+  if (!product) return;
+
+  const existing = state.cart.find((item) => item.id === product.id);
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    state.cart.push({ ...product, qty: 1 });
+  }
+
+  saveCart();
+  syncTotals();
+  renderCart();
+  showToast(`${product.name} added to cart`);
+}
+
+function updateQty(productId, delta) {
+  const item = state.cart.find((entry) => entry.id === Number(productId));
+  if (!item) return;
+
+  item.qty += delta;
+  if (item.qty <= 0) {
+    state.cart = state.cart.filter((entry) => entry.id !== Number(productId));
+  }
+
+  saveCart();
+  syncTotals();
+  renderCart();
+}
+
+function removeItem(productId) {
+  state.cart = state.cart.filter((entry) => entry.id !== Number(productId));
+  saveCart();
+  syncTotals();
+  renderCart();
+}
+
+function renderCart() {
+  if (!state.cart.length) {
+    cartItems.innerHTML = '<div class="empty-state">Your cart is empty. Add a few Hovaluxe items to continue.</div>';
+    return;
+  }
+
+  cartItems.innerHTML = state.cart.map((item) => `
+    <article class="cart-item">
+      <div class="cart-row">
+        <div>
+          <strong>${item.name}</strong>
+          <p class="cart-muted">${item.category}</p>
+        </div>
+        <strong>${formatPrice(item.price * item.qty)}</strong>
+      </div>
+      <div class="cart-row">
+        <div class="qty-controls">
+          <button type="button" data-action="decrease" data-id="${item.id}">-</button>
+          <span>${item.qty}</span>
+          <button type="button" data-action="increase" data-id="${item.id}">+</button>
+        </div>
+        <button class="remove-btn" type="button" data-action="remove" data-id="${item.id}">Remove</button>
+      </div>
+    </article>
+  `).join('');
+}
+
+function openCart() {
+  cartDrawer.classList.add('open');
+  cartDrawer.setAttribute('aria-hidden', 'false');
+}
+
+function closeCart() {
+  cartDrawer.classList.remove('open');
+  cartDrawer.setAttribute('aria-hidden', 'true');
+}
+
+function buildWhatsAppMessage(singleProduct = null) {
+  const cartItemsSource = singleProduct ? [{ ...singleProduct, qty: 1 }] : state.cart;
+  const name = customerName.value.trim();
+  const phone = customerPhone.value.trim();
+  const note = customerNote.value.trim();
+  const total = cartItemsSource.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+  const lines = [
+    'Hello Hovaluxe, I want to place an order.',
+    '',
+    'Items:'
+  ];
+
+  cartItemsSource.forEach((item, index) => {
+    lines.push(`${index + 1}. ${item.name} x${item.qty} — ${formatPrice(item.price * item.qty)}`);
+  });
+
+  lines.push('');
+  lines.push(`Total: ${formatPrice(total)}`);
+
+  if (name) lines.push(`Customer Name: ${name}`);
+  if (phone) lines.push(`Phone: ${phone}`);
+  if (note) lines.push(`Note: ${note}`);
+
+  return encodeURIComponent(lines.join('\n'));
+}
+
+function sendWhatsAppOrder(singleProduct = null) {
+  const source = singleProduct ? [singleProduct] : state.cart;
+  if (!source.length) {
+    showToast('Add at least one item before checkout');
+    return;
+  }
+
+  const url = `https://wa.me/${CONFIG.whatsappNumber}?text=${buildWhatsAppMessage(singleProduct)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function startFlutterwaveCheckout() {
+  if (!state.cart.length) {
+    showToast('Your cart is empty');
+    return;
+  }
+
+  if (CONFIG.flutterwaveLink) {
+    window.open(CONFIG.flutterwaveLink, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
+  showToast('Add your Flutterwave payment link in script.js');
+}
+
+filterButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    state.filter = button.dataset.filter;
+    filterButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
+    renderProducts();
+  });
+});
+
+searchInput.addEventListener('input', (event) => {
+  state.query = event.target.value;
+  renderProducts();
+});
+
+productsGrid.addEventListener('click', (event) => {
+  const addToCartButton = event.target.closest('.add-to-cart');
+  const whatsappButton = event.target.closest('.buy-whatsapp');
+
+  if (addToCartButton) {
+    addToCart(addToCartButton.dataset.id);
+  }
+
+  if (whatsappButton) {
+    const product = products.find((item) => item.id === Number(whatsappButton.dataset.id));
+    if (product) sendWhatsAppOrder(product);
+  }
+});
+
+cartItems.addEventListener('click', (event) => {
+  const trigger = event.target.closest('[data-action]');
+  if (!trigger) return;
+
+  const { action, id } = trigger.dataset;
+  if (action === 'increase') updateQty(id, 1);
+  if (action === 'decrease') updateQty(id, -1);
+  if (action === 'remove') removeItem(id);
+});
+
+cartButton.addEventListener('click', openCart);
+cartOverlay.addEventListener('click', closeCart);
+closeCartBtn.addEventListener('click', closeCart);
+goToCheckoutBtn.addEventListener('click', closeCart);
+
+checkoutForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  sendWhatsAppOrder();
+});
+
+flutterwaveBtn.addEventListener('click', startFlutterwaveCheckout);
+whatsappCheckoutBtn.addEventListener('click', () => {
+  if (!state.cart.length) {
+    showToast('Add at least one item before checkout');
+  }
+});
+
+renderProducts();
+renderCart();
+syncTotals();
